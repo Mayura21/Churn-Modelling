@@ -3,26 +3,21 @@ import numpy as np
 import pickle
 import streamlit as st
 from logger import logging
+import warnings
+warnings.filterwarnings('ignore')
 
-# df = pd.read_csv('dataset/Churn_Modelling.csv')
 
-# df.drop(axis=1, columns=['RowNumber', 'CustomerId', 'Surname'], inplace=True)
-
-model_path = 'Models\logistic_regression_model.pkl'
-scaler_path = 'Models\std_scaler.pkl'
-le_path = 'Models\label_encoder.pkl'
-ohe_path = 'Models\onehot_encoder.pkl'
+model_path = r'Models\logistic_regression_model.pkl'
+scaler_path = r'Models\std_scaler.pkl'
+le_path = r'Models\label_encoder.pkl'
+ohe_path = r'Models\onehot_encoder.pkl'
 ohe = pickle.load(open(ohe_path, 'rb'))
 le = pickle.load(open(le_path, 'rb'))
 model = pickle.load(open(model_path, 'rb'))
 scaler = pickle.load(open(scaler_path, 'rb'))
+
 logging.info('Models and encoders loaded successfully.')
 
-
-
-columns_considered = ['Exited', 'Age', 'Germany', 'Balance', 'France', 'Gender', 'IsActiveMember']
-
-# data = df[columns_considered]
 
 st.title('Customer Churn Prediction')
 st.write('Enter the customer details to predict if they will churn or not.')
@@ -36,16 +31,38 @@ st.text_input('Balance', value='0.0', key='balance')
 with st.form(key='churn_form'):
     submit_button = st.form_submit_button(label='Predict Churn')
     if submit_button:
+        logging.info('Form submitted for prediction.')
+
         geo_df = pd.DataFrame(ohe.transform([[st.session_state.country]]).toarray(), columns=ohe.categories_[0])
-        le_df = pd.DataFrame(le.transform([st.session_state.gender]), columns=le.classes_)
-        input_data = np.array([[st.session_state.age, st.session_state.is_active_member, float(st.session_state.balance)]])
-        input_df = pd.DataFrame(input_data, columns=['Age', 'IsActiveMember', 'Balance',])
+        logging.info(f'One-Hot Encoded Country')
+        
+        le_df = pd.DataFrame(le.transform([st.session_state.gender]), columns=['Gender'])
+        logging.info(f'Label Encoded Gender')
+
+        active_member = 1 if st.session_state.is_active_member == 'Yes' else 0
+        input_data = np.array([[st.session_state.age, active_member, float(st.session_state.balance)]])
+        input_df = pd.DataFrame(input_data, columns=['Age', 'IsActiveMember', 'Balance'])
         new_df = pd.concat([input_df, geo_df, le_df], axis=1)
-        model_input = input_df.copy()
-        print(model_input)
-        logging.INFO(f'Model Input: {model_input}')
-        result = model.predict(scaler.transform(model_input))
+
+        logging.info(f'Dropping column Spain to avoid dummy variable trap.')
+        new_df.drop(columns=['Spain'], inplace=True, axis=1)
+
+        model_input = new_df.copy()
+
+        logging.info('Reordering columns to match training data.')
+        model_input = model_input[['Age', 'Germany', 'Balance', 'France', 'Gender', 'IsActiveMember']]
+
+        logging.info(f'Scaling Data')
+        scaled_data = scaler.transform(model_input)
+
+        result = model.predict(scaled_data)
+        prob = model.predict_proba(scaled_data)
+
+        logging.info(f'Prediction result: {"The customer is likely to churn." if result[0] == 1 else "The customer is not likely to churn."}')
+        logging.info(f'Prediction Probability Not Churn: {prob[0][0]}')
+        
         if result[0] == 1:
             st.error('The customer is likely to churn.')
         else:
             st.success('The customer is not likely to churn.')
+        st.write(f'Prediction Probability Not Churn: {prob[0][0]}')
