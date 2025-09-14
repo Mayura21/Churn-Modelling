@@ -18,22 +18,22 @@ model = pickle.load(open(model_path, 'rb'))
 scaler = pickle.load(open(scaler_path, 'rb'))
 
 
-app = Flask(__name__)
+application = Flask(__name__)
 
 
-@app.route('/')
+@application.route('/')
 def home():
     logging.info('Home route accessed.')
     return render_template('index.html')
 
 
-@app.route('/details')
+@application.route('/details')
 def details():
     logging.info('Details route accessed.')
     return render_template('details.html')
 
 
-@app.route('/predict', methods=['POST'])
+@application.route('/predict', methods=['POST'])
 def predict_churn():
     logging.info('Predict route accessed.')
     # data = request.get_json(force=True)
@@ -70,5 +70,5 @@ def predict_churn():
 
 
 if __name__ == '__main__':
-    logging.info('Running Flask application.')
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    logging.info('Running Flask applicationlication.')
+    application.run(debug=True, host='127.0.0.1', port=5000)
