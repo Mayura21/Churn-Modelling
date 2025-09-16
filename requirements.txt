@@ -4,6 +4,5 @@ scikit-learn
 matplotlib
 seaborn
 streamlit
-ipykernel
 imbalanced-learn
 Flask
